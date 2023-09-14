@@ -10,8 +10,6 @@
 
 #if defined(EIGEN_CXX11_TENSOR_GPU_HIP_CUDA_DEFINES_H)
 
-#ifndef EIGEN_PERMANENTLY_ENABLE_GPU_HIP_CUDA_DEFINES
-
 #undef gpuStream_t
 #undef gpuDeviceProp_t 
 #undef gpuError_t
@@ -26,7 +24,6 @@
 #undef gpuMalloc
 #undef gpuFree
 #undef gpuMemsetAsync
-#undef gpuMemset2DAsync
 #undef gpuMemcpyAsync
 #undef gpuMemcpyDeviceToDevice
 #undef gpuMemcpyDeviceToHost
@@ -37,8 +34,6 @@
 #undef gpuStreamSynchronize
 #undef gpuDeviceSynchronize
 #undef gpuMemcpy
-
-#endif // EIGEN_PERMANENTLY_ENABLE_GPU_HIP_CUDA_DEFINES
 
 #undef EIGEN_CXX11_TENSOR_GPU_HIP_CUDA_DEFINES_H
 

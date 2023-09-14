@@ -33,15 +33,15 @@ namespace Eigen {
 IOFormat bdcsvdfmt(8, 0, ", ", "\n", "  [", "]");
 #endif
   
-template<typename MatrixType_> class BDCSVD;
+template<typename _MatrixType> class BDCSVD;
 
 namespace internal {
 
-template<typename MatrixType_>
-struct traits<BDCSVD<MatrixType_> >
-        : traits<MatrixType_>
+template<typename _MatrixType> 
+struct traits<BDCSVD<_MatrixType> >
+        : traits<_MatrixType>
 {
-  typedef MatrixType_ MatrixType;
+  typedef _MatrixType MatrixType;
 };  
 
 } // end namespace internal
@@ -54,7 +54,7 @@ struct traits<BDCSVD<MatrixType_> >
  *
  * \brief class Bidiagonal Divide and Conquer SVD
  *
- * \tparam MatrixType_ the type of the matrix of which we are computing the SVD decomposition
+ * \tparam _MatrixType the type of the matrix of which we are computing the SVD decomposition
  *
  * This class first reduces the input matrix to bi-diagonal form using class UpperBidiagonalization,
  * and then performs a divide-and-conquer diagonalization. Small blocks are diagonalized using class JacobiSVD.
@@ -69,8 +69,8 @@ struct traits<BDCSVD<MatrixType_> >
  *
  * \sa class JacobiSVD
  */
-template<typename MatrixType_>
-class BDCSVD : public SVDBase<BDCSVD<MatrixType_> >
+template<typename _MatrixType> 
+class BDCSVD : public SVDBase<BDCSVD<_MatrixType> >
 {
   typedef SVDBase<BDCSVD> Base;
     
@@ -80,7 +80,7 @@ public:
   using Base::computeU;
   using Base::computeV;
   
-  typedef MatrixType_ MatrixType;
+  typedef _MatrixType MatrixType;
   typedef typename MatrixType::Scalar Scalar;
   typedef typename NumTraits<typename MatrixType::Scalar>::Real RealScalar;
   typedef typename NumTraits<RealScalar>::Literal Literal;
@@ -208,7 +208,6 @@ protected:
   using Base::m_computeThinV;
   using Base::m_matrixU;
   using Base::m_matrixV;
-  using Base::m_info;
   using Base::m_isInitialized;
   using Base::m_nonzeroSingularValues;
 
@@ -257,25 +256,16 @@ BDCSVD<MatrixType>& BDCSVD<MatrixType>::compute(const MatrixType& matrix, unsign
   {
     // FIXME this line involves temporaries
     JacobiSVD<MatrixType> jsvd(matrix,computationOptions);
+    if(computeU()) m_matrixU = jsvd.matrixU();
+    if(computeV()) m_matrixV = jsvd.matrixV();
+    m_singularValues = jsvd.singularValues();
+    m_nonzeroSingularValues = jsvd.nonzeroSingularValues();
     m_isInitialized = true;
-    m_info = jsvd.info();
-    if (m_info == Success || m_info == NoConvergence) {
-      if(computeU()) m_matrixU = jsvd.matrixU();
-      if(computeV()) m_matrixV = jsvd.matrixV();
-      m_singularValues = jsvd.singularValues();
-      m_nonzeroSingularValues = jsvd.nonzeroSingularValues();
-    }
     return *this;
   }
   
   //**** step 0 - Copy the input matrix and apply scaling to reduce over/under-flows
-  RealScalar scale = matrix.cwiseAbs().template maxCoeff<PropagateNaN>();
-  if (!(numext::isfinite)(scale)) {
-    m_isInitialized = true;
-    m_info = InvalidInput;
-    return *this;
-  }
-
+  RealScalar scale = matrix.cwiseAbs().maxCoeff();
   if(scale==Literal(0)) scale = Literal(1);
   MatrixX copy;
   if (m_isTranspose) copy = matrix.adjoint()/scale;
@@ -292,11 +282,7 @@ BDCSVD<MatrixType>& BDCSVD<MatrixType>::compute(const MatrixType& matrix, unsign
   m_computed.topRows(m_diagSize) = bid.bidiagonal().toDenseMatrix().transpose();
   m_computed.template bottomRows<1>().setZero();
   divide(0, m_diagSize - 1, 0, 0, 0);
-  if (m_info != Success && m_info != NoConvergence) {
-    m_isInitialized = true;
-    return *this;
-  }
-    
+
   //**** step 3 - Copy singular values and vectors
   for (int i=0; i<m_diagSize; i++)
   {
@@ -408,7 +394,7 @@ void BDCSVD<MatrixType>::structured_update(Block<MatrixXr,Dynamic,Dynamic> A, co
 //@param shift : Each time one takes the left submatrix, one must add 1 to the shift. Why? Because! We actually want the last column of the U submatrix 
 // to become the first column (*coeff) and to shift all the other columns to the right. There are more details on the reference paper.
 template<typename MatrixType>
-void BDCSVD<MatrixType>::divide(Eigen::Index firstCol, Eigen::Index lastCol, Eigen::Index firstRowW, Eigen::Index firstColW, Eigen::Index shift)
+void BDCSVD<MatrixType>::divide (Eigen::Index firstCol, Eigen::Index lastCol, Eigen::Index firstRowW, Eigen::Index firstColW, Eigen::Index shift)
 {
   // requires rows = cols + 1;
   using std::pow;
@@ -428,8 +414,6 @@ void BDCSVD<MatrixType>::divide(Eigen::Index firstCol, Eigen::Index lastCol, Eig
   {
     // FIXME this line involves temporaries
     JacobiSVD<MatrixXr> b(m_computed.block(firstCol, firstCol, n + 1, n), ComputeFullU | (m_compV ? ComputeFullV : 0));
-    m_info = b.info();
-    if (m_info != Success && m_info != NoConvergence) return;
     if (m_compU)
       m_naiveU.block(firstCol, firstCol, n + 1, n + 1).real() = b.matrixU();
     else 
@@ -449,9 +433,7 @@ void BDCSVD<MatrixType>::divide(Eigen::Index firstCol, Eigen::Index lastCol, Eig
   // and the divide of the right submatrice reads one column of the left submatrice. That's why we need to treat the 
   // right submatrix before the left one. 
   divide(k + 1 + firstCol, lastCol, k + 1 + firstRowW, k + 1 + firstColW, shift);
-  if (m_info != Success && m_info != NoConvergence) return;
   divide(firstCol, k - 1 + firstCol, firstRowW, firstColW + 1, shift + 1);
-  if (m_info != Success && m_info != NoConvergence) return;
 
   if (m_compU)
   {

@@ -1,2 +1,4 @@
 build
 __pycache__
+
+monocular_slam/thirdparty/pytorch3d*

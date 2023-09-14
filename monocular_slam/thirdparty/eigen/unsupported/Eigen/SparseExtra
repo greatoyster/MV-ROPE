@@ -16,7 +16,6 @@
 
 #include <vector>
 #include <map>
-#include <unordered_map>
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
@@ -25,7 +24,6 @@
 
 #ifdef EIGEN_GOOGLEHASH_SUPPORT
   #include <google/dense_hash_map>
-  #include <google/sparse_hash_map>
 #endif
 
 /**
@@ -39,6 +37,8 @@
   */
 
 
+#include "src/SparseExtra/DynamicSparseMatrix.h"
+#include "src/SparseExtra/BlockOfDynamicSparseMatrix.h"
 #include "src/SparseExtra/RandomSetter.h"
 
 #include "src/SparseExtra/MarketIO.h"

@@ -17,7 +17,7 @@ namespace Eigen {
   *
   * \brief a sparse vector class
   *
-  * \tparam Scalar_ the scalar type, i.e. the type of the coefficients
+  * \tparam _Scalar the scalar type, i.e. the type of the coefficients
   *
   * See http://www.netlib.org/linalg/html_templates/node91.html for details on the storage scheme.
   *
@@ -26,21 +26,21 @@ namespace Eigen {
   */
 
 namespace internal {
-template<typename Scalar_, int Options_, typename StorageIndex_>
-struct traits<SparseVector<Scalar_, Options_, StorageIndex_> >
+template<typename _Scalar, int _Options, typename _StorageIndex>
+struct traits<SparseVector<_Scalar, _Options, _StorageIndex> >
 {
-  typedef Scalar_ Scalar;
-  typedef StorageIndex_ StorageIndex;
+  typedef _Scalar Scalar;
+  typedef _StorageIndex StorageIndex;
   typedef Sparse StorageKind;
   typedef MatrixXpr XprKind;
   enum {
-    IsColVector = (Options_ & RowMajorBit) ? 0 : 1,
+    IsColVector = (_Options & RowMajorBit) ? 0 : 1,
 
     RowsAtCompileTime = IsColVector ? Dynamic : 1,
     ColsAtCompileTime = IsColVector ? 1 : Dynamic,
     MaxRowsAtCompileTime = RowsAtCompileTime,
     MaxColsAtCompileTime = ColsAtCompileTime,
-    Flags = Options_ | NestByRefBit | LvalueBit | (IsColVector ? 0 : RowMajorBit) | CompressedAccessBit,
+    Flags = _Options | NestByRefBit | LvalueBit | (IsColVector ? 0 : RowMajorBit) | CompressedAccessBit,
     SupportedAccessPatterns = InnerRandomAccessPattern
   };
 };
@@ -60,9 +60,9 @@ struct sparse_vector_assign_selector;
 
 }
 
-template<typename Scalar_, int Options_, typename StorageIndex_>
+template<typename _Scalar, int _Options, typename _StorageIndex>
 class SparseVector
-  : public SparseCompressedBase<SparseVector<Scalar_, Options_, StorageIndex_> >
+  : public SparseCompressedBase<SparseVector<_Scalar, _Options, _StorageIndex> >
 {
     typedef SparseCompressedBase<SparseVector> Base;
     using Base::convert_index;
@@ -75,7 +75,7 @@ class SparseVector
     enum { IsColVector = internal::traits<SparseVector>::IsColVector };
     
     enum {
-      Options = Options_
+      Options = _Options
     };
     
     EIGEN_STRONG_INLINE Index rows() const { return IsColVector ? m_size : 1; }
@@ -397,7 +397,7 @@ protected:
     static void check_template_parameters()
     {
       EIGEN_STATIC_ASSERT(NumTraits<StorageIndex>::IsSigned,THE_INDEX_TYPE_MUST_BE_A_SIGNED_TYPE);
-      EIGEN_STATIC_ASSERT((Options_&(ColMajor|RowMajor))==Options,INVALID_MATRIX_TEMPLATE_PARAMETERS);
+      EIGEN_STATIC_ASSERT((_Options&(ColMajor|RowMajor))==Options,INVALID_MATRIX_TEMPLATE_PARAMETERS);
     }
     
     Storage m_data;
@@ -406,17 +406,17 @@ protected:
 
 namespace internal {
 
-template<typename Scalar_, int Options_, typename Index_>
-struct evaluator<SparseVector<Scalar_,Options_,Index_> >
-  : evaluator_base<SparseVector<Scalar_,Options_,Index_> >
+template<typename _Scalar, int _Options, typename _Index>
+struct evaluator<SparseVector<_Scalar,_Options,_Index> >
+  : evaluator_base<SparseVector<_Scalar,_Options,_Index> >
 {
-  typedef SparseVector<Scalar_,Options_,Index_> SparseVectorType;
+  typedef SparseVector<_Scalar,_Options,_Index> SparseVectorType;
   typedef evaluator_base<SparseVectorType> Base;
   typedef typename SparseVectorType::InnerIterator InnerIterator;
   typedef typename SparseVectorType::ReverseInnerIterator ReverseInnerIterator;
   
   enum {
-    CoeffReadCost = NumTraits<Scalar_>::ReadCost,
+    CoeffReadCost = NumTraits<_Scalar>::ReadCost,
     Flags = SparseVectorType::Flags
   };
 

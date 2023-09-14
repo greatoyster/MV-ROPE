@@ -18,13 +18,13 @@ namespace internal {
   * Stores a sparse set of values as a list of values and a list of indices.
   *
   */
-template<typename Scalar_,typename StorageIndex_>
+template<typename _Scalar,typename _StorageIndex>
 class CompressedStorage
 {
   public:
 
-    typedef Scalar_ Scalar;
-    typedef StorageIndex_ StorageIndex;
+    typedef _Scalar Scalar;
+    typedef _StorageIndex StorageIndex;
 
   protected:
 

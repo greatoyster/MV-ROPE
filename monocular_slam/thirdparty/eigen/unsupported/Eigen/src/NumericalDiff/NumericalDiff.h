@@ -32,11 +32,11 @@ enum NumericalDiffMode {
   *
   * Currently only "Forward" and "Central" scheme are implemented.
   */
-template<typename Functor_, NumericalDiffMode mode=Forward>
-class NumericalDiff : public Functor_
+template<typename _Functor, NumericalDiffMode mode=Forward>
+class NumericalDiff : public _Functor
 {
 public:
-    typedef Functor_ Functor;
+    typedef _Functor Functor;
     typedef typename Functor::Scalar Scalar;
     typedef typename Functor::InputType InputType;
     typedef typename Functor::ValueType ValueType;

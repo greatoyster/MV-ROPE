@@ -27,12 +27,8 @@ static long g_dense_op_sparse_count = 0;
 #define EIGEN_SPARSE_PRODUCT_IGNORE_TEMPORARY_COUNT
 #include "sparse_product.cpp"
 
-#ifdef min
-#undef min
-#endif
-
-#ifdef max
-#undef max
+#if 0 // sparse_basic(DynamicSparseMatrix) does not compile at all -> disabled
+#include "sparse_basic.cpp"
 #endif
 
 #include <Eigen/SparseExtra>
@@ -124,9 +120,13 @@ template<typename SparseMatrixType> void sparse_extra(const SparseMatrixType& re
 //   VERIFY_IS_APPROX(m, refMat);
 
     VERIFY(( test_random_setter<RandomSetter<SparseMatrixType, StdMapTraits> >(m,refMat,nonzeroCoords) ));
+    #ifdef EIGEN_UNORDERED_MAP_SUPPORT
     VERIFY(( test_random_setter<RandomSetter<SparseMatrixType, StdUnorderedMapTraits> >(m,refMat,nonzeroCoords) ));
-    #ifdef EIGEN_GOOGLEHASH_SUPPORT
+    #endif
+    #ifdef _DENSE_HASH_MAP_H_
     VERIFY(( test_random_setter<RandomSetter<SparseMatrixType, GoogleDenseHashMapTraits> >(m,refMat,nonzeroCoords) ));
+    #endif
+    #ifdef _SPARSE_HASH_MAP_H_
     VERIFY(( test_random_setter<RandomSetter<SparseMatrixType, GoogleSparseHashMapTraits> >(m,refMat,nonzeroCoords) ));
     #endif
 
@@ -147,7 +147,6 @@ template<typename SparseMatrixType> void sparse_extra(const SparseMatrixType& re
 
 
 }
-
 
 template<typename SparseMatrixType>
 void check_marketio()
@@ -180,6 +179,13 @@ EIGEN_DECLARE_TEST(sparse_extra)
     CALL_SUBTEST_1( sparse_extra(SparseMatrix<double>(8, 8)) );
     CALL_SUBTEST_2( sparse_extra(SparseMatrix<std::complex<double> >(s, s)) );
     CALL_SUBTEST_1( sparse_extra(SparseMatrix<double>(s, s)) );
+
+    CALL_SUBTEST_3( sparse_extra(DynamicSparseMatrix<double>(s, s)) );
+//    CALL_SUBTEST_3(( sparse_basic(DynamicSparseMatrix<double>(s, s)) ));
+//    CALL_SUBTEST_3(( sparse_basic(DynamicSparseMatrix<double,ColMajor,long int>(s, s)) ));
+
+    CALL_SUBTEST_3( (sparse_product<DynamicSparseMatrix<float, ColMajor> >()) );
+    CALL_SUBTEST_3( (sparse_product<DynamicSparseMatrix<float, RowMajor> >()) );
 
     CALL_SUBTEST_4( (check_marketio<SparseMatrix<float,ColMajor,int> >()) );
     CALL_SUBTEST_4( (check_marketio<SparseMatrix<double,ColMajor,int> >()) );

@@ -12,14 +12,14 @@
 
 namespace Eigen { 
 
-template <typename Scalar_>
-class IncompleteLU : public SparseSolverBase<IncompleteLU<Scalar_> >
+template <typename _Scalar>
+class IncompleteLU : public SparseSolverBase<IncompleteLU<_Scalar> >
 {
   protected:
-    typedef SparseSolverBase<IncompleteLU<Scalar_> > Base;
+    typedef SparseSolverBase<IncompleteLU<_Scalar> > Base;
     using Base::m_isInitialized;
     
-    typedef Scalar_ Scalar;
+    typedef _Scalar Scalar;
     typedef Matrix<Scalar,Dynamic,1> Vector;
     typedef typename Vector::Index Index;
     typedef SparseMatrix<Scalar,RowMajor> FactorType;

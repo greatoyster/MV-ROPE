@@ -3,10 +3,6 @@ cmake_minimum_required(VERSION 3.5.0)
 
 project(Eigen3)
 
-set(CMAKE_CXX_STANDARD 11 CACHE STRING "Default C++ standard")
-set(CMAKE_CXX_STANDARD_REQUIRED ON CACHE BOOL "Require C++ standard")
-set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL "Allow C++ extensions")
-
 # guard against in-source builds
 
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
@@ -66,7 +62,8 @@ include(CMakeDependentOption)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 
-option(EIGEN_TEST_CXX11 "Enable testing of unsupported CXX11 tests (i.e. those starting with cxx11_)." OFF)
+option(EIGEN_TEST_CXX11 "Enable testing with C++11 and C++11 features (e.g. Tensor module)." OFF)
+
 
 macro(ei_add_cxx_compiler_flag FLAG)
   string(REGEX REPLACE "-" "" SFLAG1 ${FLAG})
@@ -77,8 +74,19 @@ macro(ei_add_cxx_compiler_flag FLAG)
   endif()
 endmacro()
 
-# Determine if we should build shared libraries on this platform.
-get_cmake_property(EIGEN_BUILD_SHARED_LIBS TARGET_SUPPORTS_SHARED_LIBS)
+check_cxx_compiler_flag("-std=c++11" EIGEN_COMPILER_SUPPORT_CPP11)
+
+if(EIGEN_TEST_CXX11)
+  set(CMAKE_CXX_STANDARD 11)
+  set(CMAKE_CXX_EXTENSIONS OFF)
+  if(EIGEN_COMPILER_SUPPORT_CPP11)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  endif()
+else()
+  #set(CMAKE_CXX_STANDARD 03)
+  #set(CMAKE_CXX_EXTENSIONS OFF)
+  ei_add_cxx_compiler_flag("-std=c++03")
+endif()
 
 #############################################################################
 # find how to link to the standard libraries                                #
@@ -171,6 +179,18 @@ if(NOT MSVC)
   ei_add_cxx_compiler_flag("-fstrict-aliasing")
   ei_add_cxx_compiler_flag("-wd981")                    # disable ICC's "operands are evaluated in unspecified order" remark
   ei_add_cxx_compiler_flag("-wd2304")                   # disable ICC's "warning #2304: non-explicit constructor with single argument may cause implicit type conversion" produced by -Wnon-virtual-dtor
+
+
+  # The -ansi flag must be added last, otherwise it is also used as a linker flag by check_cxx_compiler_flag making it fails
+  # Moreover we should not set both -strict-ansi and -ansi
+  check_cxx_compiler_flag("-strict-ansi" COMPILER_SUPPORT_STRICTANSI)
+  ei_add_cxx_compiler_flag("-Qunused-arguments")        # disable clang warning: argument unused during compilation: '-ansi'
+
+  if(COMPILER_SUPPORT_STRICTANSI)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -strict-ansi")
+  else()
+    ei_add_cxx_compiler_flag("-ansi")
+  endif()
 
   if(ANDROID_NDK)
     ei_add_cxx_compiler_flag("-pie")
@@ -404,26 +424,25 @@ endif()
 
 if(EIGEN_INCLUDE_INSTALL_DIR AND NOT INCLUDE_INSTALL_DIR)
   set(INCLUDE_INSTALL_DIR ${EIGEN_INCLUDE_INSTALL_DIR}
-      CACHE PATH "The directory relative to CMAKE_INSTALL_PREFIX where Eigen header files are installed")
+      CACHE STRING "The directory relative to CMAKE_PREFIX_PATH where Eigen header files are installed")
 else()
   set(INCLUDE_INSTALL_DIR
       "${CMAKE_INSTALL_INCLUDEDIR}/eigen3"
-      CACHE PATH "The directory relative to CMAKE_INSTALL_PREFIX where Eigen header files are installed"
+      CACHE STRING "The directory relative to CMAKE_PREFIX_PATH where Eigen header files are installed"
       )
 endif()
 set(CMAKEPACKAGE_INSTALL_DIR
     "${CMAKE_INSTALL_DATADIR}/eigen3/cmake"
-    CACHE PATH "The directory relative to CMAKE_INSTALL_PREFIX where Eigen3Config.cmake is installed"
+    CACHE STRING "The directory relative to CMAKE_PREFIX_PATH where Eigen3Config.cmake is installed"
     )
 set(PKGCONFIG_INSTALL_DIR
     "${CMAKE_INSTALL_DATADIR}/pkgconfig"
-    CACHE PATH "The directory relative to CMAKE_INSTALL_PREFIX where eigen3.pc is installed"
+    CACHE STRING "The directory relative to CMAKE_PREFIX_PATH where eigen3.pc is installed"
     )
 
 foreach(var INCLUDE_INSTALL_DIR CMAKEPACKAGE_INSTALL_DIR PKGCONFIG_INSTALL_DIR)
-  # If an absolute path is specified, make it relative to "{CMAKE_INSTALL_PREFIX}".
   if(IS_ABSOLUTE "${${var}}")
-    file(RELATIVE_PATH "${var}" "${CMAKE_INSTALL_PREFIX}" "${${var}}")
+    message(FATAL_ERROR "${var} must be relative to CMAKE_PREFIX_PATH. Got: ${${var}}")
   endif()
 endforeach()
 
@@ -569,6 +588,9 @@ set ( EIGEN_VERSION_STRING ${EIGEN_VERSION_NUMBER} )
 set ( EIGEN_VERSION_MAJOR  ${EIGEN_WORLD_VERSION} )
 set ( EIGEN_VERSION_MINOR  ${EIGEN_MAJOR_VERSION} )
 set ( EIGEN_VERSION_PATCH  ${EIGEN_MINOR_VERSION} )
+set ( EIGEN_DEFINITIONS "")
+set ( EIGEN_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}" )
+set ( EIGEN_ROOT_DIR ${CMAKE_INSTALL_PREFIX} )
 
 include (CMakePackageConfigHelpers)
 
@@ -589,8 +611,8 @@ install (TARGETS eigen EXPORT Eigen3Targets)
 configure_package_config_file (
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Eigen3Config.cmake.in
   ${CMAKE_CURRENT_BINARY_DIR}/Eigen3Config.cmake
+  PATH_VARS EIGEN_INCLUDE_DIR EIGEN_ROOT_DIR
   INSTALL_DESTINATION ${CMAKEPACKAGE_INSTALL_DIR}
-  NO_SET_AND_CHECK_MACRO # Eigen does not provide legacy style defines
   NO_CHECK_REQUIRED_COMPONENTS_MACRO # Eigen does not provide components
 )
 # Remove CMAKE_SIZEOF_VOID_P from Eigen3ConfigVersion.cmake since Eigen does
@@ -613,9 +635,10 @@ export (PACKAGE Eigen3)
 
 install (EXPORT Eigen3Targets NAMESPACE Eigen3:: DESTINATION ${CMAKEPACKAGE_INSTALL_DIR})
 
-install (FILES ${CMAKE_CURRENT_BINARY_DIR}/Eigen3Config.cmake
-               ${CMAKE_CURRENT_BINARY_DIR}/Eigen3ConfigVersion.cmake
-         DESTINATION ${CMAKEPACKAGE_INSTALL_DIR})
+install ( FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/UseEigen3.cmake
+                ${CMAKE_CURRENT_BINARY_DIR}/Eigen3Config.cmake
+                ${CMAKE_CURRENT_BINARY_DIR}/Eigen3ConfigVersion.cmake
+          DESTINATION ${CMAKEPACKAGE_INSTALL_DIR} )
 
 # Add uninstall target
 add_custom_target ( uninstall

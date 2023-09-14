@@ -279,75 +279,10 @@ void packetmath_boolean_mask_ops() {
   CHECK_CWISE2_IF(true, internal::pcmp_eq, internal::pcmp_eq);
 }
 
-template <typename Scalar, typename Packet>
-void packetmath_boolean_mask_ops_real() {
-  const int PacketSize = internal::unpacket_traits<Packet>::size;
-  const int size = 2 * PacketSize;
-  EIGEN_ALIGN_MAX Scalar data1[size];
-  EIGEN_ALIGN_MAX Scalar data2[size];
-  EIGEN_ALIGN_MAX Scalar ref[size];
-
-  for (int i = 0; i < PacketSize; ++i) {
-    data1[i] = internal::random<Scalar>();
-    data1[i + PacketSize] = internal::random<bool>() ? data1[i] : Scalar(0);
-  }
-
-  CHECK_CWISE2_IF(true, internal::pcmp_lt_or_nan, internal::pcmp_lt_or_nan);
-
-  //Test (-0) <=/< (0) for signed operations
-  for (int i = 0; i < PacketSize; ++i) {
-    data1[i] = Scalar(-0.0);
-    data1[i + PacketSize] = internal::random<bool>() ? data1[i] : Scalar(0);
-  }
-  CHECK_CWISE2_IF(true, internal::pcmp_lt_or_nan, internal::pcmp_lt_or_nan);
-
-  //Test NaN
-  for (int i = 0; i < PacketSize; ++i) {
-    data1[i] = NumTraits<Scalar>::quiet_NaN();
-    data1[i + PacketSize] = internal::random<bool>() ? data1[i] : Scalar(0);
-  }
-  CHECK_CWISE2_IF(true, internal::pcmp_lt_or_nan, internal::pcmp_lt_or_nan);
-}
-
-template <typename Scalar, typename Packet>
-void packetmath_boolean_mask_ops_notcomplex() {
-  const int PacketSize = internal::unpacket_traits<Packet>::size;
-  const int size = 2 * PacketSize;
-  EIGEN_ALIGN_MAX Scalar data1[size];
-  EIGEN_ALIGN_MAX Scalar data2[size];
-  EIGEN_ALIGN_MAX Scalar ref[size];
-
-  for (int i = 0; i < PacketSize; ++i) {
-    data1[i] = internal::random<Scalar>();
-    data1[i + PacketSize] = internal::random<bool>() ? data1[i] : Scalar(0);
-  }
-
-  CHECK_CWISE2_IF(true, internal::pcmp_le, internal::pcmp_le);
-  CHECK_CWISE2_IF(true, internal::pcmp_lt, internal::pcmp_lt);
-
-  //Test (-0) <=/< (0) for signed operations
-  for (int i = 0; i < PacketSize; ++i) {
-    data1[i] = Scalar(-0.0);
-    data1[i + PacketSize] = internal::random<bool>() ? data1[i] : Scalar(0);
-  }
-  CHECK_CWISE2_IF(true, internal::pcmp_le, internal::pcmp_le);
-  CHECK_CWISE2_IF(true, internal::pcmp_lt, internal::pcmp_lt);
-
-  //Test NaN
-  for (int i = 0; i < PacketSize; ++i) {
-    data1[i] = NumTraits<Scalar>::quiet_NaN();
-    data1[i + PacketSize] = internal::random<bool>() ? data1[i] : Scalar(0);
-  }
-  CHECK_CWISE2_IF(true, internal::pcmp_le, internal::pcmp_le);
-  CHECK_CWISE2_IF(true, internal::pcmp_lt, internal::pcmp_lt);
-}
-
 // Packet16b representing bool does not support ptrue, pandnot or pcmp_eq, since the scalar path
 // (for some compilers) compute the bitwise and with 0x1 of the results to keep the value in [0,1].
 template<>
 void packetmath_boolean_mask_ops<bool, internal::packet_traits<bool>::type>() {}
-template<>
-void packetmath_boolean_mask_ops_notcomplex<bool, internal::packet_traits<bool>::type>() {}
 
 template <typename Scalar, typename Packet>
 void packetmath_minus_zero_add() {
@@ -518,7 +453,9 @@ void packetmath() {
   for (int i = 0; i < PacketSize; ++i) ref[0] += data1[i];
   VERIFY(test::isApproxAbs(ref[0], internal::predux(internal::pload<Packet>(data1)), refvalue) && "internal::predux");
 
-  if (!internal::is_same<Packet, typename internal::unpacket_traits<Packet>::half>::value) {
+  if (PacketSize == 8 && internal::unpacket_traits<typename internal::unpacket_traits<Packet>::half>::size ==
+                             4)  // so far, predux_half_downto4 is only required in such a case
+  {
     int HalfPacketSize = PacketSize > 4 ? PacketSize / 2 : PacketSize;
     for (int i = 0; i < HalfPacketSize; ++i) ref[i] = Scalar(0);
     for (int i = 0; i < PacketSize; ++i) ref[i % HalfPacketSize] += data1[i];
@@ -543,27 +480,6 @@ void packetmath() {
     internal::pstore(data2, kernel.packet[i]);
     for (int j = 0; j < PacketSize; ++j) {
       VERIFY(test::isApproxAbs(data2[j], data1[i + j * PacketSize], refvalue) && "ptranspose");
-    }
-  }
-
-  // GeneralBlockPanelKernel also checks PacketBlock<Packet,(PacketSize%4)==0?4:PacketSize>;
-  if (PacketSize > 4 && PacketSize % 4 == 0) {
-    internal::PacketBlock<Packet, PacketSize%4==0?4:PacketSize> kernel2;
-    for (int i = 0; i < 4; ++i) {
-      kernel2.packet[i] = internal::pload<Packet>(data1 + i * PacketSize);
-    }
-    ptranspose(kernel2);
-    int data_counter = 0;
-    for (int i = 0; i < PacketSize; ++i) {
-      for (int j = 0; j < 4; ++j) {
-        data2[data_counter++] = data1[j*PacketSize + i];
-      }
-    }
-    for (int i = 0; i < 4; ++i) {
-      internal::pstore(data3, kernel2.packet[i]);
-      for (int j = 0; j < PacketSize; ++j) {
-        VERIFY(test::isApproxAbs(data3[j], data2[i*PacketSize + j], refvalue) && "ptranspose");
-      }
     }
   }
 
@@ -658,8 +574,6 @@ void packetmath_real() {
   CHECK_CWISE1_EXACT_IF(PacketTraits::HasCeil, numext::ceil, internal::pceil);
   CHECK_CWISE1_EXACT_IF(PacketTraits::HasFloor, numext::floor, internal::pfloor);
   CHECK_CWISE1_EXACT_IF(PacketTraits::HasRint, numext::rint, internal::print);
-
-  packetmath_boolean_mask_ops_real<Scalar,Packet>();
   
   // Rounding edge cases.
   if (PacketTraits::HasRound || PacketTraits::HasCeil || PacketTraits::HasFloor || PacketTraits::HasRint) {
@@ -1106,8 +1020,6 @@ void packetmath_notcomplex() {
     CHECK_CWISE2_IF(PacketTraits::HasMin, propagate_nan_min, (internal::pmin<PropagateNaN>));
     CHECK_CWISE2_IF(PacketTraits::HasMax, propagate_nan_max, internal::pmax<PropagateNaN>);
   }
-
-  packetmath_boolean_mask_ops_notcomplex<Scalar, Packet>();
 }
 
 template <typename Scalar, typename Packet, bool ConjLhs, bool ConjRhs>

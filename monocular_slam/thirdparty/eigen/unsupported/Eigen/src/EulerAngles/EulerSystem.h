@@ -13,7 +13,7 @@
 namespace Eigen
 {
   // Forward declarations
-  template <typename Scalar_, class _System>
+  template <typename _Scalar, class _System>
   class EulerAngles;
   
   namespace internal
@@ -272,7 +272,7 @@ namespace Eigen
         res.gamma() = -res.gamma();
     }
     
-    template <typename Scalar_, class _System>
+    template <typename _Scalar, class _System>
     friend class Eigen::EulerAngles;
     
     template<typename System,

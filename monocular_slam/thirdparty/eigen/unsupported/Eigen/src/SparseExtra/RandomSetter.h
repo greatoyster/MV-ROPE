@@ -10,13 +10,7 @@
 #ifndef EIGEN_RANDOMSETTER_H
 #define EIGEN_RANDOMSETTER_H
 
-#if defined(EIGEN_GOOGLEHASH_SUPPORT)
-// Ensure the ::google namespace exists, required for checking existence of 
-// ::google::dense_hash_map and ::google::sparse_hash_map.
-namespace google {}
-#endif
-
-namespace Eigen {
+namespace Eigen { 
 
 /** Represents a std::map
   *
@@ -33,8 +27,21 @@ template<typename Scalar> struct StdMapTraits
   static void setInvalidKey(Type&, const KeyType&) {}
 };
 
-
+#ifdef EIGEN_UNORDERED_MAP_SUPPORT
 /** Represents a std::unordered_map
+  *
+  * To use it you need to both define EIGEN_UNORDERED_MAP_SUPPORT and include the unordered_map header file
+  * yourself making sure that unordered_map is defined in the std namespace.
+  *
+  * For instance, with current version of gcc you can either enable C++0x standard (-std=c++0x) or do:
+  * \code
+  * #include <tr1/unordered_map>
+  * #define EIGEN_UNORDERED_MAP_SUPPORT
+  * namespace std {
+  *   using std::tr1::unordered_map;
+  * }
+  * \endcode
+  *
   * \see RandomSetter
   */
 template<typename Scalar> struct StdUnorderedMapTraits
@@ -47,27 +54,9 @@ template<typename Scalar> struct StdUnorderedMapTraits
 
   static void setInvalidKey(Type&, const KeyType&) {}
 };
+#endif // EIGEN_UNORDERED_MAP_SUPPORT
 
-#if defined(EIGEN_GOOGLEHASH_SUPPORT)
-
-namespace google {
-  
-// Namespace work-around, since sometimes dense_hash_map and sparse_hash_map
-// are in the global namespace, and other times they are under ::google.
-using namespace ::google;
-
-template<typename KeyType, typename Scalar>
-struct DenseHashMap {
-  typedef dense_hash_map<KeyType, Scalar> type;
-};
-
-template<typename KeyType, typename Scalar>
-struct SparseHashMap {
-  typedef sparse_hash_map<KeyType, Scalar> type;
-};
-
-} // namespace google
-
+#ifdef _DENSE_HASH_MAP_H_
 /** Represents a google::dense_hash_map
   *
   * \see RandomSetter
@@ -75,7 +64,7 @@ struct SparseHashMap {
 template<typename Scalar> struct GoogleDenseHashMapTraits
 {
   typedef int KeyType;
-  typedef typename google::DenseHashMap<KeyType,Scalar>::type Type;
+  typedef google::dense_hash_map<KeyType,Scalar> Type;
   enum {
     IsSorted = 0
   };
@@ -83,7 +72,9 @@ template<typename Scalar> struct GoogleDenseHashMapTraits
   static void setInvalidKey(Type& map, const KeyType& k)
   { map.set_empty_key(k); }
 };
+#endif
 
+#ifdef _SPARSE_HASH_MAP_H_
 /** Represents a google::sparse_hash_map
   *
   * \see RandomSetter
@@ -91,7 +82,7 @@ template<typename Scalar> struct GoogleDenseHashMapTraits
 template<typename Scalar> struct GoogleSparseHashMapTraits
 {
   typedef int KeyType;
-  typedef typename google::SparseHashMap<KeyType,Scalar>::type Type;
+  typedef google::sparse_hash_map<KeyType,Scalar> Type;
   enum {
     IsSorted = 0
   };
@@ -135,26 +126,29 @@ template<typename Scalar> struct GoogleSparseHashMapTraits
   *
   * The possible values for the template parameter MapTraits are:
   *  - \b StdMapTraits: corresponds to std::map. (does not perform very well)
-  *  - \b StdUnorderedMapTraits: corresponds to std::unordered_map
+  *  - \b GnuHashMapTraits: corresponds to __gnu_cxx::hash_map (available only with GCC)
   *  - \b GoogleDenseHashMapTraits: corresponds to google::dense_hash_map (best efficiency, reasonable memory consumption)
   *  - \b GoogleSparseHashMapTraits: corresponds to google::sparse_hash_map (best memory consumption, relatively good performance)
   *
   * The default map implementation depends on the availability, and the preferred order is:
-  * GoogleSparseHashMapTraits, StdUnorderedMapTraits, and finally StdMapTraits.
+  * GoogleSparseHashMapTraits, GnuHashMapTraits, and finally StdMapTraits.
   *
   * For performance and memory consumption reasons it is highly recommended to use one of
-  * Google's hash_map implementations. To enable the support for them, you must define
-  * EIGEN_GOOGLEHASH_SUPPORT. This will include both <google/dense_hash_map> and
-  * <google/sparse_hash_map> for you.
+  * the Google's hash_map implementation. To enable the support for them, you have two options:
+  *  - \#include <google/dense_hash_map> yourself \b before Eigen/Sparse header
+  *  - define EIGEN_GOOGLEHASH_SUPPORT
+  * In the later case the inclusion of <google/dense_hash_map> is made for you.
   *
-  * \see https://github.com/sparsehash/sparsehash
+  * \see http://code.google.com/p/google-sparsehash/
   */
 template<typename SparseMatrixType,
          template <typename T> class MapTraits =
-#if defined(EIGEN_GOOGLEHASH_SUPPORT)
+#if defined _DENSE_HASH_MAP_H_
           GoogleDenseHashMapTraits
+#elif defined _HASH_MAP
+          GnuHashMapTraits
 #else
-          StdUnorderedMapTraits
+          StdMapTraits
 #endif
          ,int OuterPacketBits = 6>
 class RandomSetter
