@@ -1,4 +1,3 @@
-
 import numpy as np
 import torch
 import torch.utils.data as data
@@ -19,16 +18,18 @@ from .stream import RGBDStream
 from .augmentation import RGBDAugmentor
 from .rgbd_utils import loadtum, all_pairs_distance_matrix
 
+
 class ETH3D(RGBDDataset):
     def __init__(self, **kwargs):
-        super(ETH3D, self).__init__(root='datasets/ETH3D', name='ETH3D', **kwargs)
+        super(ETH3D, self).__init__(root="datasets/ETH3D", name="ETH3D", **kwargs)
 
-    @staticmethod 
+    @staticmethod
     def is_test_scene(scene):
         return False
 
     def _build_dataset(self):
         from tqdm import tqdm
+
         print("Building ETH3D dataset")
 
         scene_info = {}
@@ -36,12 +37,12 @@ class ETH3D(RGBDDataset):
 
         for scene in tqdm(os.listdir(self.root)):
             scene_path = osp.join(self.root, scene)
-            
+
             if not osp.isdir(scene_path):
                 continue
-            
+
             # don't use scenes with no rgb info
-            if 'dark' in scene or 'kidnap' in scene:
+            if "dark" in scene or "kidnap" in scene:
                 continue
 
             scene_data, graph = {}, {}
@@ -50,8 +51,13 @@ class ETH3D(RGBDDataset):
             # graph of co-visible frames based on flow
             graph = self.build_frame_graph(poses, depths, intrinsics)
 
-            scene_info[scene] = {'images': images, 'depths': depths, 
-                'poses': poses, 'intrinsics': intrinsics, 'graph': graph}
+            scene_info[scene] = {
+                "images": images,
+                "depths": depths,
+                "poses": poses,
+                "intrinsics": intrinsics,
+                "graph": graph,
+            }
 
         return scene_info
 
@@ -70,7 +76,7 @@ class ETH3DStream(RGBDStream):
         super(ETH3DStream, self).__init__(datapath=datapath, **kwargs)
 
     def _build_dataset_index(self):
-        """ build list of images, poses, depths, and intrinsics """
+        """build list of images, poses, depths, and intrinsics"""
         images, depths, poses, intrinsics = loadtum(self.datapath, self.frame_rate)
 
         # set first pose to identity

@@ -31,6 +31,7 @@ def calculate_iou(bbox_ref, bbox_tar):
     iou = inter_Area / float(box_A_Area + box_B_Area - inter_Area)
     return iou
 
+
 box1 = (10, 20, 50, 80)
 box2 = (10, 40, 70, 100)
 iou = calculate_iou(box2, box2)

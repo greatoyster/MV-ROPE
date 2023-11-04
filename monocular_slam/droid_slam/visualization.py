@@ -179,7 +179,7 @@ def droid_visualization(video, device="cuda:0"):
         scene_points = o3d.geometry.PointCloud()
         bboxes = o3d.geometry.LineSet()
         for box3d in droid_visualization.bbox3ds.values():
-            bboxes += box3d 
+            bboxes += box3d
         o3d.io.write_line_set("bboxes.ply", bboxes)
         for pc in droid_visualization.points.values():
             scene_points += pc

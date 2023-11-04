@@ -1,4 +1,3 @@
-
 import numpy as np
 import torch
 import glob
@@ -9,42 +8,56 @@ import os.path as osp
 from .base import RGBDDataset
 from .stream import RGBDStream
 
-class TartanAir(RGBDDataset):
 
+class TartanAir(RGBDDataset):
     # scale depths to balance rot & trans
     DEPTH_SCALE = 5.0
-    TEST_SET = ['westerndesert', 'seasidetown', 'seasonsforest_winter', 'office2', 'gascola']
+    TEST_SET = [
+        "westerndesert",
+        "seasidetown",
+        "seasonsforest_winter",
+        "office2",
+        "gascola",
+    ]
 
-    def __init__(self, mode='training', **kwargs):
+    def __init__(self, mode="training", **kwargs):
         self.mode = mode
         self.n_frames = 2
-        super(TartanAir, self).__init__(root='datasets/TartanAir', name='TartanAir', **kwargs)
+        super(TartanAir, self).__init__(
+            root="datasets/TartanAir", name="TartanAir", **kwargs
+        )
 
     @staticmethod
     def is_test_scene(scene):
-        return scene.split('/')[-3] in TartanAir.TEST_SET
+        return scene.split("/")[-3] in TartanAir.TEST_SET
 
     def _build_dataset(self):
         from tqdm import tqdm
+
         print("Building TartanAir dataset")
 
         scene_info = {}
-        scenes = glob.glob(osp.join(self.root, '*/*/*/*'))
+        scenes = glob.glob(osp.join(self.root, "*/*/*/*"))
         for scene in tqdm(sorted(scenes)):
-            images = sorted(glob.glob(osp.join(scene, 'image_left/*.png')))
-            depths = sorted(glob.glob(osp.join(scene, 'depth_left/*.npy')))
-            
-            poses = np.loadtxt(osp.join(scene, 'pose_left.txt'), delimiter=' ')
+            images = sorted(glob.glob(osp.join(scene, "image_left/*.png")))
+            depths = sorted(glob.glob(osp.join(scene, "depth_left/*.npy")))
+
+            poses = np.loadtxt(osp.join(scene, "pose_left.txt"), delimiter=" ")
             poses = poses[:, [1, 2, 0, 4, 5, 3, 6]]
-            poses[:,:3] /= TartanAir.DEPTH_SCALE
+            poses[:, :3] /= TartanAir.DEPTH_SCALE
             intrinsics = [TartanAir.calib_read()] * len(images)
 
             # graph of co-visible frames based on flow
             graph = self.build_frame_graph(poses, depths, intrinsics)
 
-            scene = '/'.join(scene.split('/'))
-            scene_info[scene] = {'images': images, 'depths': depths, 
-                'poses': poses, 'intrinsics': intrinsics, 'graph': graph}
+            scene = "/".join(scene.split("/"))
+            scene_info[scene] = {
+                "images": images,
+                "depths": depths,
+                "poses": poses,
+                "intrinsics": intrinsics,
+                "graph": graph,
+            }
 
         return scene_info
 
@@ -59,46 +72,50 @@ class TartanAir(RGBDDataset):
     @staticmethod
     def depth_read(depth_file):
         depth = np.load(depth_file) / TartanAir.DEPTH_SCALE
-        depth[depth==np.nan] = 1.0
-        depth[depth==np.inf] = 1.0
+        depth[depth == np.nan] = 1.0
+        depth[depth == np.inf] = 1.0
         return depth
 
 
 class TartanAirTest(torch.utils.data.Dataset):
-    def __init__(self, root='datasets/Tartan'):
+    def __init__(self, root="datasets/Tartan"):
         self.root = root
         self.dataset_index = []
 
         self.scene_info = {}
-        scenes = glob.glob(osp.join(self.root, '*/*/*/*'))
-        
+        scenes = glob.glob(osp.join(self.root, "*/*/*/*"))
+
         for scene in sorted(scenes):
-            image_glob = osp.join(scene, 'image_left/*.png')
-            depth_glob = osp.join(scene, 'depth_left/*.npy')            
+            image_glob = osp.join(scene, "image_left/*.png")
+            depth_glob = osp.join(scene, "depth_left/*.npy")
             images = sorted(glob.glob(image_glob))
             depths = sorted(glob.glob(depth_glob))
 
-            poses = np.loadtxt(osp.join(scene, 'pose_left.txt'), delimiter=' ')
+            poses = np.loadtxt(osp.join(scene, "pose_left.txt"), delimiter=" ")
             poses = poses[:, [1, 2, 0, 4, 5, 3, 6]]
-            poses[:,:3] /= TartanAir.DEPTH_SCALE
+            poses[:, :3] /= TartanAir.DEPTH_SCALE
             intrinsics = [TartanAir.calib_read()] * len(images)
-            
-            self.scene_info[scene] = {'images': images, 
-                'depths': depths, 'poses': poses, 'intrinsics': intrinsics}
-        
-        with open('assets/tartan_test.txt') as f:
+
+            self.scene_info[scene] = {
+                "images": images,
+                "depths": depths,
+                "poses": poses,
+                "intrinsics": intrinsics,
+            }
+
+        with open("assets/tartan_test.txt") as f:
             self.dataset_index = f.readlines()
-        
+
     def __getitem__(self, index):
-        """ load test example """
+        """load test example"""
 
         scene_id, ix1, ix2 = self.dataset_index[index].split()
         inds = [int(ix1), int(ix2)]
 
-        images_list = self.scene_info[scene_id]['images']
-        depths_list = self.scene_info[scene_id]['depths']
-        poses_list = self.scene_info[scene_id]['poses']
-        intrinsics_list = self.scene_info[scene_id]['intrinsics']
+        images_list = self.scene_info[scene_id]["images"]
+        depths_list = self.scene_info[scene_id]["depths"]
+        poses_list = self.scene_info[scene_id]["poses"]
+        intrinsics_list = self.scene_info[scene_id]["intrinsics"]
 
         images, depths, poses, intrinsics = [], [], [], []
         for i in inds:
@@ -119,17 +136,18 @@ class TartanAirTest(torch.utils.data.Dataset):
         poses = torch.from_numpy(poses)
         intrinsics = torch.from_numpy(intrinsics)
 
-        return images, poses, depths, intrinsics 
+        return images, poses, depths, intrinsics
 
     def __len__(self):
         return len(self.dataset_index)
+
 
 class TartanAirStream(RGBDStream):
     def __init__(self, datapath, **kwargs):
         super(TartanAirStream, self).__init__(datapath=datapath, **kwargs)
 
     def _build_dataset_index(self):
-        """ build list of images, poses, depths, and intrinsics """
+        """build list of images, poses, depths, and intrinsics"""
         images, poses, depths, intrinsics = loadtum(self.datapath)
         intrinsic = NYUv2.TUMStream(self.datapath)
         intrinsics = np.tile(intrinsic[None], (len(images), 1))

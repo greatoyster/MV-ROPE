@@ -9,40 +9,48 @@ from queue import Empty
 from multiprocessing import Queue, Process
 from scipy.spatial.transform import Rotation
 
+
 def pose_matrix_from_quaternion(pvec):
-    """ convert 4x4 pose matrix to (t, q) """
+    """convert 4x4 pose matrix to (t, q)"""
     pose = np.eye(4)
-    pose[:3,:3] = Rotation.from_quat(pvec[3:]).as_matrix()
+    pose[:3, :3] = Rotation.from_quat(pvec[3:]).as_matrix()
     pose[:3, 3] = pvec[:3]
     return pose
 
+
 def create_camera_actor(is_gt=False, scale=0.05):
-    """ build open3d camera polydata """
+    """build open3d camera polydata"""
 
-    cam_points = scale * np.array([
-        [ 0,   0,   0],
-        [-1,  -1, 1.5],
-        [ 1,  -1, 1.5],
-        [ 1,   1, 1.5],
-        [-1,   1, 1.5],
-        [-0.5, 1, 1.5],
-        [ 0.5, 1, 1.5],
-        [ 0, 1.2, 1.5]])
+    cam_points = scale * np.array(
+        [
+            [0, 0, 0],
+            [-1, -1, 1.5],
+            [1, -1, 1.5],
+            [1, 1, 1.5],
+            [-1, 1, 1.5],
+            [-0.5, 1, 1.5],
+            [0.5, 1, 1.5],
+            [0, 1.2, 1.5],
+        ]
+    )
 
-    cam_lines = np.array([[1, 2], [2, 3], [3, 4], [4, 1],
-        [1, 0], [0, 2], [3, 0], [0, 4], [5, 7], [7, 6]])
+    cam_lines = np.array(
+        [[1, 2], [2, 3], [3, 4], [4, 1], [1, 0], [0, 2], [3, 0], [0, 4], [5, 7], [7, 6]]
+    )
 
     camera_actor = o3d.geometry.LineSet(
         points=o3d.utility.Vector3dVector(cam_points),
-        lines=o3d.utility.Vector2iVector(cam_lines))
+        lines=o3d.utility.Vector2iVector(cam_lines),
+    )
 
     color = (0.0, 0.0, 0.0) if is_gt else (0.0, 0.8, 0.8)
     camera_actor.paint_uniform_color(color)
 
     return camera_actor
 
+
 def create_point_cloud_actor(points, colors):
-    """ open3d point cloud from numpy array """
+    """open3d point cloud from numpy array"""
 
     point_cloud = o3d.geometry.PointCloud()
     point_cloud.points = o3d.utility.Vector3dVector(points)
@@ -50,8 +58,8 @@ def create_point_cloud_actor(points, colors):
 
     return point_cloud
 
-def draw_trajectory(queue):
 
+def draw_trajectory(queue):
     draw_trajectory.queue = queue
     draw_trajectory.cameras = {}
     draw_trajectory.points = {}
@@ -63,16 +71,16 @@ def draw_trajectory(queue):
         while True:
             try:
                 data = draw_trajectory.queue.get_nowait()
-                if data[0] == 'pose':
+                if data[0] == "pose":
                     i, pose, is_gt = data[1:]
-                    
+
                     # convert to 4x4 matrix
                     pose = pose_matrix_from_quaternion(pose)
 
                     if i in draw_trajectory.cameras:
                         cam_actor, pose_prev = draw_trajectory.cameras[i]
                         pose_change = pose @ np.linalg.inv(pose_prev)
-                        
+
                         cam_actor.transform(pose_change)
                         vis.update_geometry(cam_actor)
 
@@ -89,7 +97,7 @@ def draw_trajectory(queue):
                     if not is_gt:
                         draw_trajectory.cameras[i] = (cam_actor, pose)
 
-                elif data[0] == 'points':
+                elif data[0] == "points":
                     i, points, colors = data[1:]
                     point_actor = create_point_cloud_actor(points, colors)
 
@@ -99,9 +107,9 @@ def draw_trajectory(queue):
 
                     draw_trajectory.points[i] = point_actor
 
-                elif data[0] == 'reset':
+                elif data[0] == "reset":
                     draw_trajectory.warmup = -1
-                    
+
                     for i in draw_trajectory.points:
                         vis.remove_geometry(draw_trajectory.points[i])
 
@@ -134,20 +142,20 @@ def draw_trajectory(queue):
 class SLAMFrontend:
     def __init__(self):
         self.queue = Queue()
-        self.p = Process(target=draw_trajectory, args=(self.queue, ))
+        self.p = Process(target=draw_trajectory, args=(self.queue,))
 
     def update_pose(self, index, pose, gt=False):
         if isinstance(pose, torch.Tensor):
             pose = pose.cpu().numpy()
-        self.queue.put_nowait(('pose', index, pose, gt))
+        self.queue.put_nowait(("pose", index, pose, gt))
 
     def update_points(self, index, points, colors):
         if isinstance(points, torch.Tensor):
             points = points.cpu().numpy()
-        self.queue.put_nowait(('points', index, points, colors))
-    
+        self.queue.put_nowait(("points", index, points, colors))
+
     def reset(self):
-        self.queue.put_nowait(('reset', ))
+        self.queue.put_nowait(("reset",))
 
     def start(self):
         self.p.start()
@@ -155,6 +163,3 @@ class SLAMFrontend:
 
     def join(self):
         self.p.join()
-
-
-

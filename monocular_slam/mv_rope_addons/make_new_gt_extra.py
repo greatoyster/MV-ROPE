@@ -19,14 +19,16 @@ import geom.utils as gutils
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--datapath", default="/mnt/wd8t/Datasets/DROID_DATA/nocs/real/real_test"
+    # "--datapath", default="/mnt/wd8t/Datasets/DROID_DATA/nocs/real/real_test"
+    "--datapath",
+    default="/home/yangjq/Datasets/dyna_rope_data/mvrope",
 )
 
 args = parser.parse_args()
 datapath = args.datapath
-scenes = [ "scene_31"]
+scenes = ["scene_41"]
 for scene in scenes:
-    metas = sorted(glob(os.path.join(datapath, scene, "*_meta.pred.txt")))
+    metas = sorted(glob(os.path.join(datapath, scene, "*_meta.txt")))
     bar = tqdm(metas)
     for meta in bar:
         frame_id = os.path.basename(meta)[:4]

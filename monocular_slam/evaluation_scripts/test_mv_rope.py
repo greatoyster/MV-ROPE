@@ -23,10 +23,9 @@ except:
 nocs_color_map = {k + 1: v for k, v in enumerate(sns.color_palette())}
 
 
+# TODO: save covariance matrix of each pose
 def save_reconstruction(droid, reconstruction_path):
     from pathlib import Path
-    import random
-    import string
 
     t = droid.video.counter.value
     tstamps = droid.video.tstamp[:t].cpu().numpy()
@@ -44,6 +43,9 @@ def save_reconstruction(droid, reconstruction_path):
 
     global_obj_poses = droid.video.global_obj_poses.cpu().numpy()
     box_scales = droid.video.box_scales.cpu().numpy()
+
+    pose_jacobians = droid.video.pose_jacobians.cpu().numpy()
+    pose_covariances = droid.video.pose_covariances.cpu().numpy()
 
     Path("reconstructions/{}".format(reconstruction_path)).mkdir(
         parents=True, exist_ok=True
@@ -67,8 +69,21 @@ def save_reconstruction(droid, reconstruction_path):
         obj_pose_scores,
     )
 
-    np.save("reconstructions/{}/global_obj_poses.npy".format(reconstruction_path), global_obj_poses)
+    np.save(
+        "reconstructions/{}/global_obj_poses.npy".format(reconstruction_path),
+        global_obj_poses,
+    )
     np.save("reconstructions/{}/box_scales.npy".format(reconstruction_path), box_scales)
+    np.save("reconstructions/{}/box_scales.npy".format(reconstruction_path), box_scales)
+    np.save(
+        "reconstructions/{}/pose_jacobians.npy".format(reconstruction_path),
+        pose_jacobians,
+    )
+    np.save(
+        "reconstructions/{}/pose_covariances.npy".format(reconstruction_path),
+        pose_covariances,
+    )
+
 
 def show_image(image):
     image = image.permute(1, 2, 0).cpu().numpy()
@@ -104,9 +119,9 @@ def image_stream(datapath, use_depth=False, use_aux=True, stride=1):
     fx, fy, cx, cy = np.loadtxt(os.path.join(datapath, "calibration.txt")).tolist()
     image_list = sorted(glob.glob(os.path.join(datapath, "*_color.png")))[::stride]
     depth_list = sorted(glob.glob(os.path.join(datapath, "*_depth.png")))[::stride]
-    mask_list = sorted(glob.glob(os.path.join(datapath, "*_mask.pred.png")))[::stride]
-    nocs_list = sorted(glob.glob(os.path.join(datapath, "*_coord.pred.png")))[::stride]
-    meta_list = sorted(glob.glob(os.path.join(datapath, "*_meta.pred.txt")))[::stride]
+    mask_list = sorted(glob.glob(os.path.join(datapath, "*_mask.png")))[::stride]
+    nocs_list = sorted(glob.glob(os.path.join(datapath, "*_coord.png")))[::stride]
+    meta_list = sorted(glob.glob(os.path.join(datapath, "*_meta.txt")))[::stride]
     gt_obj_poses_list = sorted(glob.glob(os.path.join(datapath, "*.remake.pkl")))[
         ::stride
     ]  # [results**, *.remake.pkl]
@@ -176,7 +191,6 @@ def image_stream(datapath, use_depth=False, use_aux=True, stride=1):
         intrinsics[0::2] *= w1 / w0
         intrinsics[1::2] *= h1 / h0
 
-
         if use_depth:
             yield t, image[None], depth, intrinsics, aux_data
 
@@ -243,10 +257,10 @@ if __name__ == "__main__":
             if t == 0:
                 args.image_size = [image.shape[2], image.shape[3]]
                 droid = Droid(args)
-            
+
             if args.zero_depth:
                 depth.zero_()
-            
+
             droid.track(
                 t,
                 image,

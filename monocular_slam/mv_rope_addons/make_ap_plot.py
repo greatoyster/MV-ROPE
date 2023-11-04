@@ -69,13 +69,15 @@ for c in cat:
         ap_trans.append(np.sum(each_cat_data[:, 4] < percent) / each_cat_data.shape[0])
     num = int(c)
 
-
-
     plt.figure(1, figsize=(2, 3))
     plt.grid(True)
     # Plotting the first subplot
     (line_iou,) = plt.plot(
-        thres_iou, ap_iou, label=trans_dict1[c], color=rocket_color[num - 1], linewidth=2.5
+        thres_iou,
+        ap_iou,
+        label=trans_dict1[c],
+        color=rocket_color[num - 1],
+        linewidth=2.5,
     )
     plt.xlabel("IoU", fontsize=12)
     plt.ylabel("AP", fontsize=12)
@@ -83,21 +85,21 @@ for c in cat:
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
 
-
-
     plt.figure(2)
     plt.grid(True)
 
     # Plotting the second subplot
     (line_rot,) = plt.plot(
-        thres_rot, ap_rot, label=trans_dict1[c], color=rocket_color[num - 1], linewidth=2.5
+        thres_rot,
+        ap_rot,
+        label=trans_dict1[c],
+        color=rocket_color[num - 1],
+        linewidth=2.5,
     )
     plt.xlabel("Rot", fontsize=12)
     plt.xlim(0, 50)
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
-
-
 
     plt.figure(3)
     plt.grid(True)
@@ -107,7 +109,11 @@ for c in cat:
 
     # Plotting the third subplot
     (line_trans,) = plt.plot(
-        thres_trans, ap_trans, label=trans_dict1[c], color=rocket_color[num - 1], linewidth=2.5
+        thres_trans,
+        ap_trans,
+        label=trans_dict1[c],
+        color=rocket_color[num - 1],
+        linewidth=2.5,
     )
     legend_handles.append(line_trans)  # Add line handle to legend_handles list
     plt.xlabel("Trans", fontsize=12)
@@ -121,11 +127,11 @@ sns.set()
 
 
 plt.figure(1)
-plt.savefig('pictures/iou.png', dpi=400, bbox_inches='tight')
+plt.savefig("pictures/iou.png", dpi=400, bbox_inches="tight")
 plt.figure(2)
-plt.savefig('pictures/rot.png', dpi=400, bbox_inches='tight')
+plt.savefig("pictures/rot.png", dpi=400, bbox_inches="tight")
 plt.figure(3)
-plt.savefig("pictures/trans.png", dpi=400, bbox_inches='tight')
+plt.savefig("pictures/trans.png", dpi=400, bbox_inches="tight")
 # plt.figure()
 # data = np.loadtxt("ratio.txt")
 # import seaborn as sns

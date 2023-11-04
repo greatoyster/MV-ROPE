@@ -73,9 +73,14 @@ class DepthVideo:
         self.poses[:] = torch.as_tensor(
             [0, 0, 0, 0, 0, 0, 1], dtype=torch.float, device="cuda"
         )
+        self.pose_covariances = torch.zeros(
+            buffer, 6, 6, dtype=torch.float, device="cuda"
+        ).share_memory_()
+        self.pose_jacobians = torch.zeros(
+            buffer, 2, 6, dtype=torch.float, device="cuda"
+        ).share_memory_()
 
         # TODO: add new attributes for object pose estimation
-
         self.obj_poses = torch.zeros(
             buffer, self.max_obj_num, 8, device="cuda", dtype=torch.float
         ).share_memory_()
@@ -321,8 +326,8 @@ class DepthVideo:
                 self.disps,
                 self.intrinsics[0],
                 self.disps_sens,
-                target,
-                weight,
+                target,  # Ex2xHxW
+                weight,  # Ex2xHxW
                 eta,
                 ii,
                 jj,
@@ -337,7 +342,26 @@ class DepthVideo:
             self.disps.clamp_(min=0.001)
 
             # TODO: add multi frame nocs fusion && dump optical flow here
-            # if obj_enabled:
+
+            is_keyframe_refined = obj_enabled
+
+            if is_keyframe_refined:
+                # TODO: calculate pose jacobian here:
+                Ji, Jj = pops.ba_pose_jacobian(
+                    self.poses, self.disps, self.intrinsics[0], ii, jj, target, weight
+                )
+                uii = torch.unique(ii)
+                self.pose_jacobians[uii] = 0
+                for i, j in zip(ii, jj):
+                    self.pose_jacobians[i] += Ji[i]
+                    self.pose_jacobians[j] += Jj[j]
+                for i in uii:
+                    self.pose_covariances[i] = (
+                        self.pose_jacobians[i].t() @ self.pose_jacobians[i]
+                    )
+                    self.pose_covariances[i] = torch.linalg.inv(
+                        self.pose_covariances[i]
+                    )
 
     def object_pose_averaging(self):
         with self.get_lock():

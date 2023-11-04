@@ -1,5 +1,6 @@
 import sys
-sys.path.append('../core')
+
+sys.path.append("../core")
 
 from tqdm import tqdm
 import numpy as np
@@ -15,8 +16,9 @@ from data_readers import factory
 
 def show_image(image):
     image = image.permute(1, 2, 0).cpu().numpy()
-    cv2.imshow('image', image / 255.0)
+    cv2.imshow("image", image / 255.0)
     cv2.waitKey(10)
+
 
 def evaluate(poses_gt, poses_est):
     from rgbd_benchmark.evaluate_ate import evaluate_ate
@@ -34,9 +36,9 @@ def evaluate(poses_gt, poses_est):
 
 @torch.no_grad()
 def run_slam(tracker, datapath, frame_rate=8.0):
-    """ run slam over full sequence """
+    """run slam over full sequence"""
 
-    torch.multiprocessing.set_sharing_strategy('file_system')
+    torch.multiprocessing.set_sharing_strategy("file_system")
     stream = factory.create_datastream(args.datapath, frame_rate=frame_rate)
 
     # start the frontend thread
@@ -47,7 +49,7 @@ def run_slam(tracker, datapath, frame_rate=8.0):
     # store groundtruth poses for evaluation
     poses_gt = []
 
-    for (tstamp, image, depth, pose, intrinsics) in tqdm(stream):
+    for tstamp, image, depth, pose, intrinsics in tqdm(stream):
         tracker.track(tstamp, image[None].cuda(), depth.cuda(), intrinsics.cuda())
         poses_gt.append(pose)
 
@@ -61,17 +63,18 @@ def run_slam(tracker, datapath, frame_rate=8.0):
 
     poses_gt = torch.cat(poses_gt, 0)
     poses_est = tracker.raw_poses()
-    evaluate(poses_gt, poses_est) 
-        
+    evaluate(poses_gt, poses_est)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--datapath', help='path to video for slam')
-    parser.add_argument('--ckpt', help='saved network weights')
-    parser.add_argument('--viz', action='store_true', help='run visualization frontent')
-    parser.add_argument('--go', action='store_true', help='use global optimization')
-    parser.add_argument('--frame_rate', type=float, default=8.0, help='frame rate')
+    parser.add_argument("--datapath", help="path to video for slam")
+    parser.add_argument("--ckpt", help="saved network weights")
+    parser.add_argument("--viz", action="store_true", help="run visualization frontent")
+    parser.add_argument("--go", action="store_true", help="use global optimization")
+    parser.add_argument("--frame_rate", type=float, default=8.0, help="frame rate")
     args = parser.parse_args()
 
     # initialize tracker / load weights

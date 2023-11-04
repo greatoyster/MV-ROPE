@@ -2,3 +2,4 @@ build
 __pycache__
 
 monocular_slam/thirdparty/pytorch3d*
+monocular_slam/reconstructions/

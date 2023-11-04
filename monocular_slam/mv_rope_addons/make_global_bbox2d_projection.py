@@ -144,11 +144,10 @@ file_names = {
     "active_objs.npy": "active_objs",
     "obj_pose_scores.npy": "obj_pose_scores",
     "global_obj_poses.npy": "global_obj_poses",
-    "box_scales.npy": "box_scales"
-
+    "box_scales.npy": "box_scales",
 }
 
-scenes = [ "scene_1"] #, "scene_35", "scene_21"]
+scenes = ["scene_1"]  # , "scene_35", "scene_21"]
 
 for scene in scenes:
     datapath = os.path.join("/mnt/wd8t/Datasets/DROID_DATA/nocs/real/real_test/", scene)
@@ -167,7 +166,6 @@ for scene in scenes:
         file_path = os.path.join(reconstruction_path, file_name)
         data_dict[key] = np.load(file_path)
 
-
     # Access the loaded data
     disps_data = torch.as_tensor(data_dict["disps"])
     images_data = torch.as_tensor(data_dict["images"])
@@ -182,11 +180,10 @@ for scene in scenes:
     obj_pose_scores_data = torch.as_tensor(data_dict["obj_pose_scores"])
     global_obj_poses_data = torch.as_tensor(data_dict["global_obj_poses"])
     box_scales_data = torch.as_tensor(data_dict["box_scales"]) * 2
-    
+
     ref_idx = 0
 
     for ref_idx in range(len(images_data)):
-        
         image_ref = images_data[ref_idx].cpu().permute(1, 2, 0).contiguous().numpy()
         world_to_cam = SE3(poses_data[ref_idx]).matrix()
 
@@ -205,19 +202,20 @@ for scene in scenes:
             nocs_to_world = Sim3(global_obj_poses_data[i]).matrix()
             nocs_to_cam = world_to_cam @ nocs_to_world
             new_vertice = vertices.clone()
-            print("box_scale",box_scales_data[i])
-            new_vertice[:, 0] *= box_scales_data[i,0]
-            new_vertice[:, 1] *= box_scales_data[i,1]
-            new_vertice[:, 2] *= box_scales_data[i,2]
+            print("box_scale", box_scales_data[i])
+            new_vertice[:, 0] *= box_scales_data[i, 0]
+            new_vertice[:, 1] *= box_scales_data[i, 1]
+            new_vertice[:, 2] *= box_scales_data[i, 2]
 
             new_vertice = nocs_to_cam[:3, :3] @ new_vertice.t() + nocs_to_cam[:3, 3:4]
-            new_vertice = new_vertice.t()       
+            new_vertice = new_vertice.t()
 
             vert_color = generate_color(2 * i - 1)
             line_color = generate_color(2 * i)
             image_ref = draw_vertice_and_lines(
                 image_ref, new_vertice, edges, (fx, fy, cx, cy), vert_color, line_color
             )
-        cv2.imwrite(f"2d_pro/{scene}_{int(timestamps_data[ref_idx].item())}_box_projection.png", image_ref)
-    
-
+        cv2.imwrite(
+            f"2d_pro/{scene}_{int(timestamps_data[ref_idx].item())}_box_projection.png",
+            image_ref,
+        )

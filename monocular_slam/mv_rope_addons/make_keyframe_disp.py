@@ -62,12 +62,11 @@ file_names = {
 what_we_want = [18, 108, 251]
 
 for scene in scenes:
-    datapath = os.path.join(
-        "/mnt/wd8t/Datasets/DROID_DATA/nocs/real/real_test/", scene)
+    datapath = os.path.join("/mnt/wd8t/Datasets/DROID_DATA/nocs/real/real_test/", scene)
     # reconstruction_path = os.path.join("reconstructions", scene) # "reconstructions/scene_1_fw_4_kt_2.5_zd"
-    exp_variants = glob(f"reconstructions/{scene}_fw_16_kt_3.5*")
+    exp_variants = glob(f"reconstructions/{scene}")
     print(exp_variants)
-    
+
     if use_global_scale:
         exp_variants = [i for i in exp_variants if i.endswith("zd")]
     else:
@@ -86,23 +85,19 @@ for scene in scenes:
 
         local_window = (0, None, 1)
         start, end, stride = local_window
-
         # Access the loaded data
         disps_data = torch.as_tensor(data_dict["disps"][start:end:stride])
         images_data = torch.as_tensor(data_dict["images"][start:end:stride])
         intrinsics_data = torch.as_tensor(
-            data_dict["intrinsics"][start:end:stride] * 8.0)
+            data_dict["intrinsics"][start:end:stride] * 8.0
+        )
         poses_data = torch.as_tensor(data_dict["poses"][start:end:stride])
-        timestamps_data = torch.as_tensor(
-            data_dict["timestamps"][start:end:stride])
+        timestamps_data = torch.as_tensor(data_dict["timestamps"][start:end:stride])
         nocs_data = torch.as_tensor(data_dict["nocs"][start:end:stride])
         masks_data = torch.as_tensor(data_dict["masks"][start:end:stride])
-        gt_obj_poses_data = torch.as_tensor(
-            data_dict["gt_obj_poses"][start:end:stride])
-        obj_poses_data = torch.as_tensor(
-            data_dict["obj_poses"][start:end:stride])
-        active_objs_data = torch.as_tensor(
-            data_dict["active_objs"][start:end:stride])
+        gt_obj_poses_data = torch.as_tensor(data_dict["gt_obj_poses"][start:end:stride])
+        obj_poses_data = torch.as_tensor(data_dict["obj_poses"][start:end:stride])
+        active_objs_data = torch.as_tensor(data_dict["active_objs"][start:end:stride])
         obj_pose_scores_data = torch.as_tensor(
             data_dict["obj_pose_scores"][start:end:stride]
         )
@@ -118,17 +113,16 @@ for scene in scenes:
                 pred_depth = 1 / disps_data[i].cpu().numpy()
                 ht, wd = pred_depth.shape[:2]
 
-                gt_depth = cv2.imread(
-                    gt_depth_paths[ts], cv2.IMREAD_ANYDEPTH) / 1000
-                gt_depth = cv2.resize(gt_depth, (wd, ht),
-                                      interpolation=cv2.INTER_NEAREST)
+                gt_depth = cv2.imread(gt_depth_paths[ts], cv2.IMREAD_ANYDEPTH) / 1000
+                gt_depth = cv2.resize(
+                    gt_depth, (wd, ht), interpolation=cv2.INTER_NEAREST
+                )
 
                 mask = gt_depth > 1e-5
 
                 masked_gt_depth = gt_depth[mask].reshape(-1)
                 masked_pred_depth = pred_depth[mask].reshape(-1, 1)
-                reg = HuberRegressor(
-                    epsilon=1.05, max_iter=20000, fit_intercept=False)
+                reg = HuberRegressor(epsilon=1.05, max_iter=20000, fit_intercept=False)
                 reg.fit(masked_pred_depth, masked_gt_depth)
 
                 score = reg.score(masked_pred_depth, masked_gt_depth)
@@ -137,6 +131,7 @@ for scene in scenes:
                     best_model = reg
                 depth_scales[i] = reg.coef_.item()
             scale = best_model.coef_.item()
+            # Here we apply the scale to depth predicted
 
         if export_scaled_depth_error:
             for i, ts in tqdm(enumerate(timestamps_data)):
@@ -145,10 +140,10 @@ for scene in scenes:
                 pred_depth = 1 / disps_data[i].cpu().numpy()
                 ht, wd = pred_depth.shape[:2]
 
-                gt_depth = cv2.imread(
-                    gt_depth_paths[ts], cv2.IMREAD_ANYDEPTH) / 1000
-                gt_depth = cv2.resize(gt_depth, (wd, ht),
-                                      interpolation=cv2.INTER_NEAREST)
+                gt_depth = cv2.imread(gt_depth_paths[ts], cv2.IMREAD_ANYDEPTH) / 1000
+                gt_depth = cv2.resize(
+                    gt_depth, (wd, ht), interpolation=cv2.INTER_NEAREST
+                )
 
                 mask = gt_depth > 1e-5
 
@@ -156,21 +151,22 @@ for scene in scenes:
                 masked_pred_depth = pred_depth[mask].reshape(-1, 1)
 
                 score = reg.score(masked_pred_depth, masked_gt_depth)
-                vmax = max(np.max(pred_depth),np.max(gt_depth))
-                vmin = min(np.min(pred_depth),np.min(gt_depth))
+                vmax = max(np.max(pred_depth), np.max(gt_depth))
+                vmin = min(np.min(pred_depth), np.min(gt_depth))
 
-                pred_depth = pred_depth* best_model.coef_
+                pred_depth = pred_depth * best_model.coef_
                 corrected_depth = pred_depth
                 fig = plt.figure()
-                plt.imshow(corrected_depth,vmin=vmin,vmax=vmax)
+                plt.imshow(corrected_depth, vmin=vmin, vmax=vmax)
                 plt.axis("off")
-                plt.savefig(f"{scene}_{ts}_depth_pred.png", dpi=500, bbox_inches='tight')
-                
-                
+                plt.savefig(
+                    f"{scene}_{ts}_depth_pred.png", dpi=500, bbox_inches="tight"
+                )
+
                 fig = plt.figure()
-                plt.imshow(gt_depth,vmin=vmin,vmax=vmax)
+                plt.imshow(gt_depth, vmin=vmin, vmax=vmax)
                 plt.axis("off")
-                plt.savefig(f"{scene}_{ts}_depth_gt.png", dpi=500, bbox_inches='tight')
+                plt.savefig(f"{scene}_{ts}_depth_gt.png", dpi=500, bbox_inches="tight")
 
                 # plt.imshow(gt_depth)
                 # plt.savefig(

@@ -1,4 +1,3 @@
-
 import pickle
 import os
 import os.path as osp
@@ -16,15 +15,16 @@ from .tartan import TartanAirStream
 
 
 def dataset_factory(dataset_list, **kwargs):
-    """ create a combined dataset """
+    """create a combined dataset"""
 
     from torch.utils.data import ConcatDataset
 
     dataset_map = {
-        'tartan': (TartanAir, 1),
-        'nyu': (NYUv2, 2),
-        'eth': (ETH3D, 5),
-        'scannet': (ScanNet, 1)}
+        "tartan": (TartanAir, 1),
+        "nyu": (NYUv2, 2),
+        "eth": (ETH3D, 5),
+        "scannet": (ScanNet, 1),
+    }
 
     db_list = []
     for key in dataset_list:
@@ -36,24 +36,21 @@ def dataset_factory(dataset_list, **kwargs):
         db_list.append(db)
 
     return ConcatDataset(db_list)
-            
+
 
 def create_datastream(dataset_path, **kwargs):
-    """ create data_loader to stream images 1 by 1 """
+    """create data_loader to stream images 1 by 1"""
 
     from torch.utils.data import DataLoader
 
-    if osp.isfile(osp.join(dataset_path, 'calibration.txt')):
+    if osp.isfile(osp.join(dataset_path, "calibration.txt")):
         db = ETH3DStream(dataset_path, **kwargs)
 
-    elif osp.isfile(osp.join(dataset_path, 'rgb.txt')):
+    elif osp.isfile(osp.join(dataset_path, "rgb.txt")):
         db = TUMStream(dataset_path, **kwargs)
-    
-    elif osp.isdir(osp.join(dataset_path, 'image_left')):
+
+    elif osp.isdir(osp.join(dataset_path, "image_left")):
         db = TartanStream(dataset_path, **kwargs)
 
     stream = DataLoader(db, shuffle=False, batch_size=1, num_workers=4)
     return stream
-
-
-

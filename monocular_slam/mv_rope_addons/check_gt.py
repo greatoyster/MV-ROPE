@@ -29,7 +29,23 @@ scenes = ["scene_1", "scene_2", "scene_3", "scene_4", "scene_5", "scene_6"]
 #                 print("Keys:", list(data.keys()))
 
 
-scenes = ["scene_22", "scene_21" ,"scene_23", "scene_24","scene_26", "scene_25", "scene_1", "scene_2", "scene_3", "scene_4", "scene_5", "scene_6" , "scene_7", "scene_8", "scene_9"]
+scenes = [
+    "scene_22",
+    "scene_21",
+    "scene_23",
+    "scene_24",
+    "scene_26",
+    "scene_25",
+    "scene_1",
+    "scene_2",
+    "scene_3",
+    "scene_4",
+    "scene_5",
+    "scene_6",
+    "scene_7",
+    "scene_8",
+    "scene_9",
+]
 for scene in scenes:
     # Iterate through all files in the folder
     folder_path = base_directory + scene

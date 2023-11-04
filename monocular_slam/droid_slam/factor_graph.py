@@ -200,6 +200,8 @@ class FactorGraph:
             self.video.obj_poses[ix] = self.video.obj_poses[ix + 1]
             self.video.active_objs[ix] = self.video.active_objs[ix + 1]
             self.video.gt_obj_poses[ix] = self.video.gt_obj_poses[ix + 1]
+            self.video.pose_covariances[ix] = self.video.pose_covariances[ix + 1]
+            self.video.pose_jacobians[ix] = self.video.pose_jacobians[ix + 1]
 
         m = (self.ii_inac == ix) | (self.jj_inac == ix)
         self.ii_inac[self.ii_inac >= ix] -= 1
